@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:tx="http://www.springframework.org/schema/tx"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+    xmlns:context="http://www.springframework.org/schema/context"
+    xmlns:jee="http://www.springframework.org/schema/jee"
+    xmlns:task="http://www.springframework.org/schema/task"
+    xmlns:util="http://www.springframework.org/schema/util"
+    xmlns:mvc="http://www.springframework.org/schema/mvc"
+    xsi:schemaLocation="
+    http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-4.1.xsd
+    http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.1.xsd 
+    http://www.springframework.org/schema/tx  http://www.springframework.org/schema/tx/spring-tx-4.1.xsd 
+    http://www.springframework.org/schema/jee http://www.springframework.org/schema/jee/spring-jee.xsd
+    http://www.springframework.org/schema/task http://www.springframework.org/schema/task/spring-task-4.0.xsd
+    http://www.springframework.org/schema/mvc http://www.springframework.org/schema/mvc/spring-mvc-4.0.xsd
+    http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util-4.0.xsd
+    http://www.springframework.org/schema/jms
+    http://www.springframework.org/schema/jms/spring-jms-4.0.xsd
+    http://activemq.apache.org/schema/core
+    http://activemq.apache.org/schema/core/activemq-core-5.8.0.xsd">  
+ 
+ 	<bean id="myConnectionFactory1" 
+        class="org.springframework.jms.connection.CachingConnectionFactory"> 
+        <!-- Session缓存数量  -->
+        <property name="sessionCacheSize" value="10" /> 
+        <property name="targetConnectionFactory"> 
+            <bean class="org.apache.activemq.ActiveMQConnectionFactory"> 
+              <!--   MQ地址  -->
+                <property name="brokerURL" 
+                    value="tcp://localhost:61616"/> 
+            </bean> 
+        </property> 
+    </bean>
+ 
+   <!-- 测试 MessageListenerAdapter开始-->
+    <!-- 发送消息的目的地（一个主题） --> 
+    <bean id="myDestination" class="org.apache.activemq.command.ActiveMQTopic"> 
+        <!-- 设置消息主题的名字 --> 
+        <constructor-arg index="0" value="Online.Notice.Topic" /> 
+    </bean> 
+ 
+    <!-- 配置JMS模版 --> 
+    <bean id="myJmsTemplate" class="org.springframework.jms.core.JmsTemplate"> 
+        <property name="connectionFactory" ref="myConnectionFactory1" /> 
+        <property name="defaultDestination" ref="myDestination" /> 
+        <!-- 订阅发布模式 --> 
+        <property name="pubSubDomain" value="true" /> 
+        <property name="receiveTimeout" value="10000" /> 
+        <property name="explicitQosEnabled" value="true" /> 
+    </bean> 
+    <!-- 测试 MessageListenerAdapter结束-->
+    
+    <!--  测试 SessionAwareMessageListener         开始   -->
+    <bean id="queueDestination" class="org.apache.activemq.command.ActiveMQTopic">
+    	 <!-- 设置消息主题的名字 -->
+    	 <constructor-arg>  
+            <value>sessionAwareQueue</value>  
+        </constructor-arg> 
+    </bean>
+    
+    <bean id="SessionJmsTemplate" class="org.springframework.jms.core.JmsTemplate"> 
+        <property name="connectionFactory" ref="myConnectionFactory1" /> 
+        <property name="defaultDestination" ref="queueDestination" /> 
+        <!-- 订阅发布模式 --> 
+        <property name="pubSubDomain" value="true" /> 
+        <property name="receiveTimeout" value="10000" /> 
+        <property name="explicitQosEnabled" value="true" /> 
+    </bean> 
+    
+    
+    <!-- 测试MessageListener start -->
+    <bean id="MessageListenerDestination" class="org.apache.activemq.command.ActiveMQTopic">
+    	 <!-- 设置消息主题的名字 -->
+    	 <constructor-arg>  
+            <value>messageListener</value>  
+        </constructor-arg> 
+    </bean>
+    <bean id="MessageJmsTemplate" class="org.springframework.jms.core.JmsTemplate"> 
+        <property name="connectionFactory" ref="myConnectionFactory1" /> 
+        <property name="defaultDestination" ref="MessageListenerDestination" /> 
+        <!-- 订阅发布模式 --> 
+        <property name="pubSubDomain" value="true" /> 
+        <property name="receiveTimeout" value="10000" /> 
+        <property name="explicitQosEnabled" value="true" /> 
+    </bean>
+
+ 
+ </beans>

@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:tx="http://www.springframework.org/schema/tx"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+    xmlns:context="http://www.springframework.org/schema/context"
+    xmlns:jee="http://www.springframework.org/schema/jee"
+    xmlns:task="http://www.springframework.org/schema/task"
+    xmlns:util="http://www.springframework.org/schema/util"
+    xmlns:mvc="http://www.springframework.org/schema/mvc"
+    xmlns:jms="http://www.springframework.org/schema/jms"
+    xsi:schemaLocation="
+    http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-4.1.xsd
+    http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.1.xsd 
+    http://www.springframework.org/schema/tx  http://www.springframework.org/schema/tx/spring-tx-4.1.xsd 
+    http://www.springframework.org/schema/jee http://www.springframework.org/schema/jee/spring-jee.xsd
+    http://www.springframework.org/schema/task http://www.springframework.org/schema/task/spring-task-4.0.xsd
+    http://www.springframework.org/schema/mvc http://www.springframework.org/schema/mvc/spring-mvc-4.0.xsd
+    http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util-4.0.xsd
+    http://www.springframework.org/schema/jms
+    http://www.springframework.org/schema/jms/spring-jms-4.0.xsd
+    http://activemq.apache.org/schema/core
+    http://activemq.apache.org/schema/core/activemq-core-5.8.0.xsd">
+    
+     <!-- 配置JMS连接工厂 receive --> 
+    <bean id="myConnectionFactory" 
+        class="org.springframework.jms.connection.CachingConnectionFactory"> 
+        <!-- Session缓存数量 --> 
+        <property name="sessionCacheSize" value="10" /> 
+        <property name="clientId" value="client_111" />
+        <property name="targetConnectionFactory"> 
+            <bean class="org.apache.activemq.ActiveMQConnectionFactory"> 
+                <!-- MQ地址 --> 
+                <property name="brokerURL" 
+                    value="tcp://localhost:61616" /> 
+                <!-- 是否异步发送 --> 
+                <property name="useAsyncSend" value="true" /> 
+            </bean> 
+        </property> 
+    </bean> 
+    
+	<!-- 测试 MessageListenerAdapter监听器 start-->
+    <!-- 接收消息的目的地（一个主题） --> 
+   <!--  <bean id="myDestination" class="org.apache.activemq.command.ActiveMQTopic"> 
+        设置消息主题的名字 
+        <constructor-arg index="0" value="Online.Notice.Topic" /> 
+    </bean> 
+  -->
+    <!-- 消费消息配置 （自己定义） --> 
+    <bean id="myTopicConsumer" class="com.lzt.MessageListenerAdapter.SimpleJMSReceiver" /> 
+ 
+    <!-- MessageListenerAdapter消息监听器 --> 
+    <bean id="myTopicListener" 
+        class="org.springframework.jms.listener.adapter.MessageListenerAdapter"> 
+        <constructor-arg ref="myTopicConsumer" /> 
+        <!-- 接收消息的方法名称  当不设置该项的时候默认是调用类中的handleMessage方法--> 
+        <property name="defaultListenerMethod" value="receive" /> 
+        <!-- 设置回复的目的地 -->
+        <!-- <property name="defaultResponseDestination" ref="CommonDestination"/> -->
+        <!-- 不进行消息转换 --> 
+        <!-- <property name="messageConverter"> 
+            <null /> 
+        </property>  -->
+    </bean> 
+ 
+    <!-- 消息监听容器 --> 
+    <bean id="myListenerContainer" 
+        class="org.springframework.jms.listener.DefaultMessageListenerContainer"> 
+        <property name="connectionFactory" ref="myConnectionFactory" /> 
+        <!-- 发布订阅模式 --> 
+        <property name="pubSubDomain" value="true" /> 
+        <!-- 消息持久化 --> 
+        <property name="subscriptionDurable" value="true" /> 
+        <property name="receiveTimeout" value="10000" /> 
+        <property name="destination" ref="myDestination" /> 
+        <property name="messageListener" ref="myTopicListener" /> 
+    </bean> 
+    
+    <!-- 测试 SessionAwareMessageListener         开始  
+    SessionAwareMessageListener是Spring为我们提供的，它不是标准的JMS MessageListener。
+  MessageListener的设计只是纯粹用来接收消息的，假如我们在使用MessageListener处理接收到的消息时
+    我们需要发送一个消息通知对方我们已经收到这个消息了，那么这个时候我们就需要在代码里面去重新获取一个Connection
+    或Session。
+    SessionAwareMessageListener的设计就是为了方便我们在接收到消息后发送一个回复的消息，
+    它同样为我们提供了一个处理接收到的消息的onMessage方法，但是这个方法可以同时接收两个参数，
+    一个是表示当前接收到的消息Message，另一个就是可以用来发送消息的Session对象-->
+    
+    <bean id="queueDestination" class="org.apache.activemq.command.ActiveMQTopic">
+    	 <!-- 设置消息主题的名字 -->
+    	 <constructor-arg>  
+            <value>sessionAwareQueue</value>  
+        </constructor-arg> 
+    </bean>
+    <!-- 接收消息配置 （自己定义） --> 
+    <bean id="consumerMessageListener" class="com.lzt.SessionAwareMessageListener.SessionAwareReceive" /> 
+    
+    <!-- 可以获取session的MessageListener -->  
+    <bean id="consumerSessionAwareMessageListener" class="com.lzt.SessionAwareMessageListener.SessionAwareReceive">  
+        <property name="destination" ref="CommonDestination"/>  
+    </bean>  
+    
+    <!-- 消息监听容器 -->
+    <bean id="sessionAwareListenerContainer"  
+        class="org.springframework.jms.listener.DefaultMessageListenerContainer">  
+        <property name="connectionFactory" ref="myConnectionFactory" />  
+        <property name="destination" ref="queueDestination" />  
+        <property name="messageListener" ref="consumerSessionAwareMessageListener" />  
+    </bean>  
+    
+    <!-- 测试MessageListener  监听 开始-->
+    <bean id="MessageListenerDestination" class="org.apache.activemq.command.ActiveMQTopic">
+    	<!--  设置消息主题的名字 -->
+    	 <constructor-arg>  
+            <value>messageListener</value>  
+        </constructor-arg> 
+    </bean>
+     <!-- 接收消息配置 （自己定义） --> 
+    <bean id="MessageListener" class="com.lzt.MessageListener.MessageListenerReceive" /> 
+ <!--    消息监听容器  -->
+    <bean id="MessageListenerContainer" 
+        class="org.springframework.jms.listener.DefaultMessageListenerContainer"> 
+        <property name="connectionFactory" ref="myConnectionFactory" /> 
+        <!-- 发布订阅模式  -->
+        <property name="pubSubDomain" value="true" /> 
+        <!-- 消息持久化 --> 
+        <property name="subscriptionDurable" value="true" /> 
+        <property name="receiveTimeout" value="10000" />
+        <property name="destination" ref="MessageListenerDestination" /> 
+        <property name="messageListener" ref="MessageListener" /> 
+    </bean> 
+    
+   
+    <!-- 配置一个公共的接收消息回复的消费者 -->
+ 
+    <bean id="CommonDestination" class="org.apache.activemq.command.ActiveMQTopic">
+    	<!--  设置消息主题的名字 -->
+    	 <constructor-arg>  
+            <value>common</value>  
+        </constructor-arg> 
+    </bean>
+     <!-- 接收消息配置 （自己定义） --> 
+    <bean id="CommonMessageListener" class="com.lzt.Comment.MessageComment" /> 
+ <!--    消息监听容器  -->
+    <bean id="CommentMessageListenerContainer" 
+        class="org.springframework.jms.listener.DefaultMessageListenerContainer"> 
+        <property name="connectionFactory" ref="myConnectionFactory" /> 
+        <!-- 发布订阅模式  -->
+        <property name="pubSubDomain" value="true" /> 
+        <!-- 消息持久化 --> 
+         <property name="subscriptionDurable" value="true" /> 
+        <property name="receiveTimeout" value="10000" />
+        <property name="destination" ref="CommonDestination" /> 
+        <property name="messageListener" ref="CommonMessageListener" /> 
+    </bean> 
+    
+    
+    
+ 	   
+    
+    
+ </beans>
